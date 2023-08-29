@@ -1,2 +1,7 @@
+torch
+torchvision
 transformers
+dataset
 gradio
+faiss-gpu
+pillow
