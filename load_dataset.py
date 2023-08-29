@@ -16,6 +16,7 @@ from datasets import Dataset
 from transformers import AutoImageProcessor, ConvNextModel
 import torchvision.transforms as transforms
 from torchvision.datasets import ImageFolder
+import numpy as np
 from torch.utils.data import DataLoader
 from PIL import Image
 
@@ -73,8 +74,6 @@ if __name__ == '__main__':
 
     # model.to_device(device)
     def get_embeddings(image):
-        if image.data['image'] == None:
-            return None
         inputs = image_processor(image.data['image'].convert('RGB'),  return_tensors="pt")
         with torch.no_grad():
             outputs = model(**inputs)
@@ -82,7 +81,7 @@ if __name__ == '__main__':
 
     image_embedding_field = 'image_embedding'
     print(f'map image embeddings to {image_embedding_field}')
-    dataset = dataset.map(lambda x: {image_embedding_field: get_embeddings(x).detach().cpu().numpy()[0]})
+    dataset = dataset.map(lambda x: {image_embedding_field: get_embeddings(x).detach().cpu().numpy()[0]}, batched=False)
     pass
 
 
