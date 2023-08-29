@@ -10,12 +10,23 @@ find . -type f -exec file -i {} \; | grep " text/plain;" | wc
 
 '''
 
+import torch
+from datasets import load_dataset
+from datasets import Dataset
+from transformers import AutoImageProcessor, ConvNextModel
 import torchvision.transforms as transforms
 from torchvision.datasets import ImageFolder
 from torch.utils.data import DataLoader
+from PIL import Image
+
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+'''
+    load images and labels from disk 
+'''
 
 def load_images(root_directory):
-    target_size = (512,512)
+    target_size = (512, 512)
     # Define transformations to apply to the images (resizing, normalization, etc.)
     transform = transforms.Compose([
         transforms.Resize(target_size),  # Resize images to target size pixels
@@ -26,19 +37,52 @@ def load_images(root_directory):
     # Create an ImageFolder dataset
     return ImageFolder(root=root_directory, transform=transform)
 
+
+def add_embeddings(dataset:Dataset):
+    model_checkpoint = 'facebook/convnext-tiny-224'
+    print(f'loading model from : {model_checkpoint}')
+    image_processor = AutoImageProcessor.from_pretrained(model_checkpoint)
+    model = ConvNextModel.from_pretrained(model_checkpoint)
+    # print(f'copy model to {device} device...')
+    # model.to_device(device)
+
+    def get_embeddings(image):
+        inputs = image_processor(image, return_tensors="pt")
+        with torch.no_grad():
+            outputs = model(**inputs)
+            return outputs.last_hidden_state
+
+    image_embedding_field = 'image_embedding'
+    print(f'map image embeddings to {image_embedding_field}')
+    dataset = dataset.map(lambda x: {image_embedding_field: get_embeddings(x).detach().cpu().numpy()[0]})
+    return dataset
+
+
+
+
 if __name__ == '__main__':
-
+    # TODO parameters
     root_directory = "./data/docs-sm"  # TODO args
-    dataset = load_images(root_directory=root_directory)
+    model_checkpoint = 'facebook/convnext-tiny-224'
 
-    # Create a DataLoader for batching and shuffling
-    batch_size = 32
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
-    # Print some information about the dataset
-    print(f"Number of classes: {len(dataset.classes)}")
-    print(f"Number of images: {len(dataset)}")
+    dataset = load_dataset('imagefolder', data_dir="data/docs-sm", drop_labels=False)
 
-    for batch in dataloader:
-        images, labels = batch
-        # Now you can use 'images' and 'labels' in your training loop
+    print(f'loading model from : {model_checkpoint}')
+    image_processor = AutoImageProcessor.from_pretrained(model_checkpoint)
+    model = ConvNextModel.from_pretrained(model_checkpoint)
+
+    # model.to_device(device)
+    def get_embeddings(image):
+        if image.data['image'] == None:
+            return None
+        inputs = image_processor(image.data['image'].convert('RGB'),  return_tensors="pt")
+        with torch.no_grad():
+            outputs = model(**inputs)
+            return outputs.last_hidden_state
+
+    image_embedding_field = 'image_embedding'
+    print(f'map image embeddings to {image_embedding_field}')
+    dataset = dataset.map(lambda x: {image_embedding_field: get_embeddings(x).detach().cpu().numpy()[0]})
+    pass
+
 
