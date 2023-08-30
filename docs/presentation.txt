@@ -1,0 +1,3 @@
+
+triplet-los.png
+Effect of triplet loss minimization in training: the positive is moved closer to the anchor than the negative.
