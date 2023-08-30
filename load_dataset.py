@@ -14,8 +14,10 @@ import torch
 from datasets import load_dataset
 from datasets import Dataset
 from transformers import AutoImageProcessor, ConvNextModel
-import torchvision.transforms as transforms
+import torchvision.transforms as T
 from torchvision.datasets import ImageFolder
+from transformers import AutoFeatureExtractor, AutoModel
+
 import numpy as np
 from torch.utils.data import DataLoader
 from PIL import Image
@@ -59,8 +61,6 @@ def add_embeddings(dataset:Dataset):
     return dataset
 
 
-
-
 if __name__ == '__main__':
     # TODO parameters
     root_directory = "./data/docs-sm"  # TODO args
@@ -69,19 +69,56 @@ if __name__ == '__main__':
     dataset = load_dataset('imagefolder', data_dir="data/docs-sm", drop_labels=False)
 
     print(f'loading model from : {model_checkpoint}')
-    image_processor = AutoImageProcessor.from_pretrained(model_checkpoint)
-    model = ConvNextModel.from_pretrained(model_checkpoint)
+    # image_processor = AutoImageProcessor.from_pretrained(model_checkpoint)
+    # model = ConvNextModel.from_pretrained(model_checkpoint)
 
-    # model.to_device(device)
-    def get_embeddings(image):
-        inputs = image_processor(image.data['image'].convert('RGB'),  return_tensors="pt")
-        with torch.no_grad():
-            outputs = model(**inputs)
-            return outputs.last_hidden_state
+    extractor = AutoFeatureExtractor.from_pretrained(model_checkpoint)
+    model = AutoModel.from_pretrained(model_checkpoint)
+    hidden_dim = model.config.hidden_sizes
+    # Data transformation chain.
+    transformation_chain = T.Compose(
+        [
+            # We first resize the input image to 256x256 and then we take center crop.
+            T.Resize(int((256 / 224) * extractor.size["shortest_edge"])),
+            T.CenterCrop(extractor.size["shortest_edge"]),
+            T.ToTensor(),
+            T.Lambda(lambda x: torch.cat([x, x, x], 0)),
+            T.Normalize(mean=extractor.image_mean, std=extractor.image_std),
+        ]
+    )
 
-    image_embedding_field = 'image_embedding'
-    print(f'map image embeddings to {image_embedding_field}')
-    dataset = dataset.map(lambda x: {image_embedding_field: get_embeddings(x).detach().cpu().numpy()[0]}, batched=False)
+
+    def extract_embeddings(model: torch.nn.Module):
+        """Utility to compute embeddings."""
+        device = model.device
+
+        def pp(batch):
+            images = batch["image"]
+            image_batch_transformed = torch.stack(
+                [transformation_chain(image) for image in images]
+            )
+            new_batch = {"pixel_values": image_batch_transformed.to(device)}
+            with torch.no_grad():
+                embeddings = model(**new_batch).last_hidden_state[:, 0].cpu()
+            return {"embeddings": embeddings}
+
+        return pp
+
+    # Here, we map embedding extraction utility on our subset of candidate images.
+    batch_size = 24
+    extract_fn = extract_embeddings(model.to(device))
+    dataset_emb = dataset.map(extract_fn, batched=True, batch_size=24)
+    print(dataset_emb[:10])
     pass
+
+
+
+
+
+
+
+
+
+
 
 
