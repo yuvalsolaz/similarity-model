@@ -99,7 +99,7 @@ if __name__ == '__main__':
             )
             new_batch = {"pixel_values": image_batch_transformed.to(device)}
             with torch.no_grad():
-                embeddings = model(**new_batch).last_hidden_state[:, 0].cpu()
+                embeddings = model(**new_batch).pooler_output.cpu()
             return {"embeddings": embeddings}
 
         return pp
@@ -108,8 +108,7 @@ if __name__ == '__main__':
     batch_size = 24
     extract_fn = extract_embeddings(model.to(device))
     dataset_emb = dataset.map(extract_fn, batched=True, batch_size=24)
-    print(dataset_emb[:10])
-    pass
+    print(f'{dataset_emb.shape} embeddings dataset' )
 
 
 
