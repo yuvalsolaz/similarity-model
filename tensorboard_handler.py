@@ -4,8 +4,8 @@ from torch.utils.tensorboard import SummaryWriter
 from torchvision import transforms as transforms
 from PIL import Image
 
-thumbnail_width = 128
-thumbnail_height = 128
+thumbnail_width = 64
+thumbnail_height = 64
 
 
 def load_image(image_file_name):
@@ -36,7 +36,7 @@ def write_embedding_preview(log_dir, ds: Dataset, embedding_field, tag):
 
     # metadata:
     metadata_df = ds.with_format('pandas')
-    metadata_header = ['image_path', 'label']
+    metadata_header = ['image_path', 'label', 'label_name']
     metadata = metadata_df[:][metadata_header].values.tolist()
 
     # image labels (thumbnails)
