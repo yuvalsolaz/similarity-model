@@ -14,7 +14,7 @@ import torch
 from datasets import load_dataset
 import torchvision.transforms as T
 from transformers import AutoFeatureExtractor, AutoModel
-
+from tensorboard_handler import write_embedding_preview
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -81,13 +81,15 @@ if __name__ == '__main__':
 
         def pp(batch):
             images = batch["image"]
+            image_path = [image.filename for image in images]
             image_batch_transformed = torch.stack(
                 [transformation_chain(image) for image in images]
             )
             new_batch = {"pixel_values": image_batch_transformed.to(device)}
             with torch.no_grad():
                 embeddings = model(**new_batch).pooler_output.cpu()
-            return {"embeddings": embeddings}
+            # add image path
+            return {"image_path": image_path, "embeddings": embeddings}
 
         return pp
 
@@ -97,6 +99,12 @@ if __name__ == '__main__':
     extract_fn = extract_embeddings(model.to(device))
     dataset_emb = dataset.map(extract_fn, batched=True, batch_size=24)
     print(f'embeddings dataset created with {dataset_emb.shape} samples...' )
+
+    log_dir = f'embeddings/{model_checkpoint}'
+    print(f'write tensorboard logs to {log_dir}' )
+    write_embedding_preview(log_dir=log_dir, ds=dataset_emb['train'], embedding_field='embeddings', tag='vision')
+    print(f'run: tensorboard --logdir {log_dir} --bind_all')
+
 
 
 

@@ -5,3 +5,4 @@ datasets
 gradio
 faiss-gpu
 pillow
+tensorboard
