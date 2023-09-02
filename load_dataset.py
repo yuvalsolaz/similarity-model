@@ -1,9 +1,9 @@
-
 import torch
+from tensorboard_handler import write_embedding_preview
 from datasets import load_dataset
 import torchvision.transforms as T
 from transformers import AutoFeatureExtractor, AutoModel
-from tensorboard_handler import write_embedding_preview
+from transformers import CLIPProcessor, CLIPModel
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -12,9 +12,12 @@ if __name__ == '__main__':
     root_directory = "./data/docs-sm"  # TODO args
     dataset = load_dataset('imagefolder', data_dir="data/docs-sm", drop_labels=False)
     label_ids2label_names = dataset['train'].features['label'].names
-    model_checkpoint = 'facebook/convnext-tiny-224'
+    # model_checkpoint = 'facebook/convnext-tiny-224'
+    model_checkpoint = 'openai/clip-vit-base-patch32'
+
     print(f'loading model from : {model_checkpoint}')
-    extractor = AutoFeatureExtractor.from_pretrained(model_checkpoint)
+    # extractor = AutoFeatureExtractor.from_pretrained(model_checkpoint)
+    extractor = CLIPProcessor.from_pretrained(model_checkpoint).feature_extractor
     transformation_chain = T.Compose(
         [
             # We first resize the input image to 256x256 and then we take center crop.
@@ -49,7 +52,8 @@ if __name__ == '__main__':
 
 
     # Here, we map embedding extraction utility on our subset of candidate images.
-    model = AutoModel.from_pretrained(model_checkpoint)
+    # model = AutoModel.from_pretrained(model_checkpoint)
+    model = CLIPModel.from_pretrained(model_checkpoint)
     batch_size = 24
     extract_fn = extract_embeddings(model.to(device))
     dataset_emb = dataset.map(extract_fn, batched=True, batch_size=24)
