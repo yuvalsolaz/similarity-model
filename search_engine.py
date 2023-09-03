@@ -1,6 +1,8 @@
+import os.path
+
 import torch
 import faiss
-from datasets import load_dataset
+from datasets import load_dataset, Dataset
 import torchvision.transforms as T
 from transformers import AutoFeatureExtractor, AutoModel
 from transformers import CLIPProcessor, CLIPModel
@@ -33,7 +35,7 @@ class SearchEngine(object):
             ]
         )
 
-        print(f'TODO : copy model to {device} device')
+        print(f'copy model to {device} device')
         self._model.to(device)
 
         print(f'load search dataset from {dataset_path}')
@@ -70,11 +72,30 @@ class SearchEngine(object):
 
         return pp
 
-    def get_embeddings(self, image):
-        return self.__extract_embeddings(image)
+    def get_embeddings(self, image_path):
+        single_dataset = load_dataset('imagefolder', data_dir=os.path.dirname(image_path), drop_labels=False)['train']
+        extract_fn = self.__batch_embeddings(self._model.to(device))
+        single_dataset = single_dataset.map(extract_fn, batched=False)
+        return single_dataset[-1]
+        # transformation_chain = T.Compose(
+        #     [
+        #         # We first resize the input image to 256x256 and then we take center crop.
+        #         T.Resize(int((256 / 224) * self._extractor.size["shortest_edge"])),
+        #         T.CenterCrop(self._extractor.size["shortest_edge"]),
+        #         T.ToTensor(),
+        #         T.Lambda(lambda x: torch.cat([x], 0)),
+        #         T.Normalize(mean=self._extractor.image_mean, std=self._extractor.image_std),
+        #     ]
+        # )
+        #
+        # new_image = transformation_chain(image)
+        # with torch.no_grad():
+        #     # embeddings = model(**new_batch).pooler_output.cpu()
+        #     embeddings = self._model.get_image_features(**new_image).cpu()
+        # return {"embeddings": embeddings}
 
     def search(self, query_image, k=5):
-        query_embedding = self.get_embeddings(query_image=query_image).cpu().detach().numpy()
+        query_embedding = self.get_embeddings(image_path=query_image).cpu().detach().numpy()
         scores, images = self._dataset.get_nearest_examples(index_name=self.index_name, query=query_embedding, k=k)
         # normalie distances
         query_norm = torch.norm(torch.Tensor(query_embedding))

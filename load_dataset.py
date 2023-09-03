@@ -9,7 +9,6 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 if __name__ == '__main__':
     # TODO parameters
-    root_directory = "./data/docs-sm"  # TODO args
     dataset = load_dataset('imagefolder', data_dir="data/docs-sm", drop_labels=False)
     label_ids2label_names = dataset['train'].features['label'].names
     # model_checkpoint = 'facebook/convnext-tiny-224'
@@ -53,7 +52,7 @@ if __name__ == '__main__':
         return pp
 
 
-    # Here, we map embedding extraction utility on our subset of candidate images.
+    # map embedding extraction utility on our candidate images.
     # model = AutoModel.from_pretrained(model_checkpoint)
     model = CLIPModel.from_pretrained(model_checkpoint)
     batch_size = 24
