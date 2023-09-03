@@ -3,7 +3,7 @@ import faiss
 
 from search_engine import SearchEngine
 
-dataset_path = r'.data/docs-sm'
+dataset_path = r'data/docs-sm'
 similarity_model = 'openai/clip-vit-base-patch32'
 search_engine = SearchEngine(dataset_path=dataset_path,
                              similarity_model=similarity_model,
@@ -33,7 +33,7 @@ with gr.Blocks() as demo:
     with gr.Column():
         gr.Markdown('results documents')
         search_inputs = [inputs_image, top_k_input]
-        results_output = gr.Gallery().style(columns=[3], rows=[3], height='auto')
+        results_output = gr.Gallery(columns=[3], rows=[3], height='auto')
         search_btn.click(fn=run_query, inputs=search_inputs, outputs=results_output)
 
 if __name__ == '__main__':
