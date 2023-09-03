@@ -44,7 +44,9 @@ if __name__ == '__main__':
             )
             new_batch = {"pixel_values": image_batch_transformed.to(device)}
             with torch.no_grad():
-                embeddings = model(**new_batch).pooler_output.cpu()
+                # embeddings = model(**new_batch).pooler_output.cpu()
+                embeddings = model.get_image_features(**new_batch).cpu()
+
             # add image path
             return {"image_path": image_path, "label_name": label_names, "embeddings": embeddings}
 

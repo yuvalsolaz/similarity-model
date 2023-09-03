@@ -54,7 +54,7 @@ def write_embedding_preview(log_dir, ds: Dataset, embedding_field, tag):
     label_images = torch.Tensor(img_label_dataset[:][image_label_field])
 
     print(f'writes {embedding_tensor.shape[0]} points with {embedding_tensor.shape[1]} embedding'
-          f'and {metadata_header} metadata to {log_dir}')
+          f' and {metadata_header} metadata to {log_dir}')
     writer = SummaryWriter(log_dir=log_dir)
     writer.add_embedding(embedding_tensor, tag=tag, metadata=metadata,
                          metadata_header=metadata_header if len(metadata_header) > 1 else None,
