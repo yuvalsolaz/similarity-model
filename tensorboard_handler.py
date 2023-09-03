@@ -4,8 +4,8 @@ from torch.utils.tensorboard import SummaryWriter
 from torchvision import transforms as transforms
 from PIL import Image
 
-thumbnail_width = 64
-thumbnail_height = 64
+thumbnail_width = 96
+thumbnail_height = 96
 
 
 def load_image(image_file_name):
