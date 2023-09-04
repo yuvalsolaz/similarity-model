@@ -19,7 +19,7 @@ class SearchEngine(object):
                  metric_type=faiss.METRIC_INNER_PRODUCT):
         self._similarity_model = similarity_model
         self._index_column = index_column
-
+        self._metric_type = metric_type
         print(f'loading similarity model {self._similarity_model}...')
         # self._model = AutoModel.from_pretrained(model_checkpoint)
         self._model = CLIPModel.from_pretrained(self._similarity_model)
@@ -40,11 +40,22 @@ class SearchEngine(object):
 
         print(f'load search dataset from {dataset_path}')
         self._dataset = load_dataset('imagefolder', data_dir=dataset_path, drop_labels=False)['train']
+                                     # , download_mode='force_redownload')['train']
         self._label_ids2label_names = self._dataset.features['label'].names
 
         extract_fn = self.__batch_embeddings(self._model.to(device))
         self._dataset = self._dataset.map(extract_fn, batched=True, batch_size=24)
         print(f'embeddings dataset created with {self._dataset.shape} samples...')
+
+        self._transformation_chain = T.Compose(
+            [
+                # We first resize the input image to 256x256 and then we take center crop.
+                T.Resize(int((256 / 224) * self._extractor.size["shortest_edge"])),
+                T.CenterCrop(self._extractor.size["shortest_edge"]),
+                T.ToTensor(),
+                T.Normalize(mean=self._extractor.image_mean, std=self._extractor.image_std),
+            ]
+        )
 
         print(f'create faiss index on {self._index_column}...')
         self._dataset.add_faiss_index(column=self._index_column, metric_type=metric_type)
@@ -75,15 +86,14 @@ class SearchEngine(object):
     def get_embeddings(self, image_path):
         single_dataset = load_dataset('imagefolder', data_dir=os.path.dirname(image_path), drop_labels=False)['train']
         extract_fn = self.__batch_embeddings(self._model.to(device))
-        single_dataset = single_dataset.map(extract_fn, batched=False)
-        return single_dataset[-1]
+        single_dataset = single_dataset.map(extract_fn, batched=True)
+        return torch.Tensor(single_dataset['embeddings'].__iter__().__next__())
         # transformation_chain = T.Compose(
         #     [
         #         # We first resize the input image to 256x256 and then we take center crop.
         #         T.Resize(int((256 / 224) * self._extractor.size["shortest_edge"])),
         #         T.CenterCrop(self._extractor.size["shortest_edge"]),
         #         T.ToTensor(),
-        #         T.Lambda(lambda x: torch.cat([x], 0)),
         #         T.Normalize(mean=self._extractor.image_mean, std=self._extractor.image_std),
         #     ]
         # )
@@ -96,10 +106,11 @@ class SearchEngine(object):
 
     def search(self, query_image, k=5):
         query_embedding = self.get_embeddings(image_path=query_image).cpu().detach().numpy()
-        scores, images = self._dataset.get_nearest_examples(index_name=self.index_name, query=query_embedding, k=k)
-        # normalie distances
+        scores, images = self._dataset.get_nearest_examples(index_name=self._index_column, query=query_embedding, k=k)
+        # normalize scores
         query_norm = torch.norm(torch.Tensor(query_embedding))
-        for idx in range(scores.shape[0]):
-            image_norm = torch.norm(torch.Tensor(images[self._index_column][idx]))
-            scores[idx] /= (query_norm * image_norm)
+        for i in range(len(scores)):
+            image_norm = torch.norm(torch.Tensor(images[self._index_column][i]))
+            scores[i] /= (query_norm * image_norm)
+
         return scores, images
