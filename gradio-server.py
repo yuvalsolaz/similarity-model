@@ -6,6 +6,7 @@ from search_engine import SearchEngine
 dataset_path = r'data/docs-sm'
 similarity_model = 'openai/clip-vit-base-patch32'
 metric_type = faiss.METRIC_L2
+interface_hight = 400
 
 search_engine = SearchEngine(dataset_path=dataset_path,
                              similarity_model=similarity_model,
@@ -28,12 +29,12 @@ def run_query(input_image, top_k):
 
 if __name__ == '__main__':
     inputs_image = [
-        gr.Image(type='filepath', label='Input Image'),
+        gr.Image(type='filepath', label='Input Image', height=interface_hight),
         gr.Slider(label='top_k', show_label=True, value=5, minimum=1, maximum=10, step=1)
     ]
 
     outputs_image = [
-        gr.Gallery(label='Search Results').style(columns=[3], rowa=[3], object_fit='contain', height='auto')]
+        gr.Gallery(label='Search Results').style(columns=[3], rowa=[3], object_fit='contain', height=interface_hight)]
     demo = gr.Interface(
         fn=run_query,
         inputs=inputs_image,
