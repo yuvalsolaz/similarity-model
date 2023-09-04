@@ -3,6 +3,7 @@ embeddings/
 ./data/*
 data/
 .DS_Store
+flagged/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
