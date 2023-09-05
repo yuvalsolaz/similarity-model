@@ -3,6 +3,6 @@ torchvision
 transformers
 datasets
 gradio
-faiss-gpu
+faiss-cpu
 pillow
 tensorboard
