@@ -1,5 +1,4 @@
 import os.path
-
 import torch
 import faiss
 from datasets import load_dataset, Dataset
@@ -7,7 +6,7 @@ import torchvision.transforms as T
 from transformers import AutoFeatureExtractor, AutoModel
 from transformers import CLIPProcessor, CLIPModel
 
-device = torch.device('cuda' if torch.cuda.is_available else 'cpu')
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 class SearchEngine(object):
